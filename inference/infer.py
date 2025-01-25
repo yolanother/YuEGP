@@ -38,7 +38,7 @@ stage1_model = args.stage1_model
 stage2_model = args.stage2_model
 cuda_idx = args.cuda_idx
 max_new_tokens = args.max_new_tokens
-stage1_path = os.path.join(args.output_dir, f"stage1/max_new_tokens_{max_new_tokens}")
+stage1_path = os.path.join(args.output_dir, f"stage1")
 stage2_path = stage1_path.replace('stage1', 'stage2')
 text_prompt_path = os.path.join(args.output_dir, 'text_prompt')
 os.makedirs(stage1_path, exist_ok=True)
@@ -65,7 +65,16 @@ codectool_stage2 = CodecManipulator("xcodec", 0, 8)
 stage1_output_set = []
 # lyrics and genres
 genres = "female blues airy vocal bright vocal piano sad romantic guitar jazz"
-lyrics = ["[verse]\nIn the quiet of the evening, shadows start to fall\nWhispers of the night wind echo through the hall\nLost within the silence, I hear your gentle voice\nGuiding me back homeward, making my heart rejoice\n", "[chorus]\nDon't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow\n", "[verse]\nMoonlight paints a picture upon your lovely face\nEvery glance between us fills the empty space\nTime stands still around us when you're in my arms\nNothing else can matter, safe from any harm\n", "[chorus]\nDon't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow\n", "[bridge]\nEvery touch ignites a fire, burning deep within\nEvery smile you give to me makes my head spin\nPromise me you'll stay awhile, don't ever say goodbye\nTogether we'll chase every star across the sky\n", "[chorus]\nDon't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow\n", "[outro]\nStay with me forever, let our love just flow\n"], "audio_length_in_sec": 329.9526530612245, "vocals_codec": "codeclm/launcher/scripts/pretrain/exp28/infer_msa_prompt/audio_prompt_codec/o6_argRl3r0.Vocals_xcodec_16k_0_compressed.npy", "instrumental_codec": "codeclm/launcher/scripts/pretrain/exp28/infer_msa_prompt/audio_prompt_codec/o6_argRl3r0.Instrumental_xcodec_16k_0_compressed.npy", "lyrics_sections": ["In the quiet of the evening, shadows start to fall\nWhispers of the night wind echo through the hall\nLost within the silence, I hear your gentle voice\nGuiding me back homeward, making my heart rejoice", "Don't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow", "Moonlight paints a picture upon your lovely face\nEvery glance between us fills the empty space\nTime stands still around us when you're in my arms\nNothing else can matter, safe from any harm", "Don't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow", "Every touch ignites a fire, burning deep within\nEvery smile you give to me makes my head spin\nPromise me you'll stay awhile, don't ever say goodbye\nTogether we'll chase every star across the sky", "Don't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow", "Stay with me forever, let our love just flow"]
+lyrics = [
+    "[verse]\nIn the quiet of the evening, shadows start to fall\nWhispers of the night wind echo through the hall\nLost within the silence, I hear your gentle voice\nGuiding me back homeward, making my heart rejoice\n", 
+    "[chorus]\nDon't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow\n", 
+    "[verse]\nMoonlight paints a picture upon your lovely face\nEvery glance between us fills the empty space\nTime stands still around us when you're in my arms\nNothing else can matter, safe from any harm\n", 
+    "[chorus]\nDon't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow\n", 
+    "[bridge]\nEvery touch ignites a fire, burning deep within\nEvery smile you give to me makes my head spin\nPromise me you'll stay awhile, don't ever say goodbye\nTogether we'll chase every star across the sky\n", 
+    "[chorus]\nDon't let this moment fade, hold me close tonight\nWith you here beside me, everything's alright\nCan't imagine life alone, don't want to let you go\nStay with me forever, let our love just flow\n", 
+    "[outro]\nStay with me forever, let our love just flow\n"
+    ]
+# intruction
 prompt_texts = [f'Generate music from the given lyrics segment by segment.\n[Genre] {genres}\n{"\n".join(lyrics)}']
 prompt_texts += lyrics
 
@@ -154,10 +163,6 @@ try:
 
 except AssertionError as e:
     print(e)
-    error_index = sorted(np.where(codec_ids < 45334)[0].tolist() + np.where(codec_ids >= 46358)[0].tolist())
-    np.save(os.path.join(error_output_path, f'cot_{data_idx}_codec_id_assertion_error_{random_id}.npy'), codec_ids)
-    if len(error_index) > 0:
-        print('error code:', codec_ids[error_index[0]])
 except ValueError as e:
     print(e)
 
