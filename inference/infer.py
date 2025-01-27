@@ -322,11 +322,11 @@ def stage2_inference(model, stage1_output_set, stage2_output_dir, batch_size=4):
                 start_idx = seg * batch_size * 300
                 # Ensure the end_idx does not exceed the available length
                 end_idx = min((seg + 1) * batch_size * 300, output_duration*50)  # Adjust the last segment
-                batch_size = batch_size if seg != num_segments-1 else num_batch % batch_size
+                current_batch_size = batch_size if seg != num_segments-1 or num_batch % batch_size == 0 else num_batch % batch_size
                 segment = stage2_generate(
                     model,
                     prompt[:, start_idx:end_idx],
-                    batch_size=batch_size
+                    batch_size=current_batch_size
                 )
                 segments.append(segment)
 
@@ -354,11 +354,8 @@ def stage2_inference(model, stage1_output_set, stage2_output_dir, batch_size=4):
     return stage2_result
 
 stage2_result = stage2_inference(model_stage2, stage1_output_set, stage2_output_dir, batch_size=args.stage2_batch_size)
+print(stage2_result)
 print('Stage 2 DONE.\n')
-# stage2_result = [
-#     "/aifs4su/mmcode/codeclm/opensuno_publish/YuE/inference/output/stage2/cot_piano guitar jazz blues sad romantic bright vocal female_tp0@93_T1@0_rp1@2_maxtk3000_instrumental_7f81e06b-1828-4cb5-9844-c84f4e681d17.npy",
-#     "/aifs4su/mmcode/codeclm/opensuno_publish/YuE/inference/output/stage2/cot_piano guitar jazz blues sad romantic bright vocal female_tp0@93_T1@0_rp1@2_maxtk3000_vocal_7f81e06b-1828-4cb5-9844-c84f4e681d17.npy"
-# ]
 # convert audio tokens to audio
 def save_audio(wav: torch.Tensor, path, sample_rate: int, rescale: bool = False):
     folder_path = os.path.dirname(path)
@@ -420,7 +417,7 @@ for npy in stage2_result:
             inst_decoder,
             codec_model
         )
-    elif 'vocal' in npy:
+    else:
         # Process vocal
         vocal_output = process_audio(
             npy,
