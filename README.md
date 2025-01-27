@@ -44,8 +44,8 @@ In the following example, customize the `genres` and `lyrics` in the script, the
 ```python
 cd inference/
 python infer.py \
-    --stage1_model {STAGE1_MODEL_PATH} \
-    --stage2_model {STAGE2_MODEL_PATH} \
+    --stage1_model m-a-p/YuE-s1-7B-anneal-en-cot \
+    --stage2_model m-a-p/YuE-s2-1B-general \
     --output_dir ./output \
     --cuda_idx 0 \
     --max_new_tokens 3000
