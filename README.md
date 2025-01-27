@@ -125,6 +125,15 @@ On an **RTX 4090 GPU**, one session takes approximately 180 seconds** (replace w
 3. If using audio prompt，the duration around 30s will be fine.
 ---
 
+### Notice
+1. A suitable [Genre] tag consists of five components: genre, instrument, mood, gender, and timbre. All five should be included if possible, separated by spaces. The values of timbre should include "vocal" (e.g., "bright vocal").
+
+2. Although our tags have an open vocabulary, we have provided the 200 most commonly used [tags](./wav_top_200_tags.json). It is recommended to select tags from this list for more stable results.
+
+3. The order of the tags is flexible. For example, a stable genre control string might look like: "[Genre] inspiring female uplifting pop airy vocal electronic bright vocal vocal."
+
+4. Additionally, we have introduced the "Mandarin" and "Cantonese" tags to distinguish between Mandarin and Cantonese, as their lyrics often share similarities.
+
 ## License Agreement
 
 
