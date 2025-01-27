@@ -24,32 +24,35 @@ from collections import Counter
 from models.soundstream_hubert_new import SoundStream
 from vocoder import build_codec_model, process_audio
 from post_process_audio import replace_low_freq_with_energy_matched
-import ast
+import re
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--stage1_model", type=str, default="m-a-p/YuE-s1-7B-anneal-en-cot")
-parser.add_argument("--stage2_model", type=str, default="m-a-p/YuE-s2-1B-general")
-parser.add_argument("--max_new_tokens", type=int, default=3000)
-parser.add_argument("--run_n_segments", type=int, default=2)
-parser.add_argument("--stage2_batch_size", type=int, default=4)
-
-parser.add_argument("--disable_offload_model", action="store_true")
-parser.add_argument("--output_dir", type=str, default="./output")
+# Model Configuration:
+parser.add_argument("--stage1_model", type=str, default="m-a-p/YuE-s1-7B-anneal-en-cot", help="The model checkpoint path or identifier for the Stage 1 model.")
+parser.add_argument("--stage2_model", type=str, default="m-a-p/YuE-s2-1B-general", help="The model checkpoint path or identifier for the Stage 2 model.")
+parser.add_argument("--max_new_tokens", type=int, default=3000, help="The maximum number of new tokens to generate in one pass during text generation.")
+parser.add_argument("--run_n_segments", type=int, default=2, help="The number of segments to process during the generation.")
+parser.add_argument("--stage2_batch_size", type=int, default=4, help="The batch size used in Stage 2 inference.")
+# Prompt
+parser.add_argument("--genre_txt", type=str, required=True, help="The file path to a text file containing genre tags that describe the musical style or characteristics (e.g., instrumental, genre, mood, vocal timbre, vocal gender). This is used as part of the generation prompt.")
+parser.add_argument("--lyrics_txt", type=str, required=True, help="The file path to a text file containing the lyrics for the music generation. These lyrics will be processed and split into structured segments to guide the generation process.")
+parser.add_argument("--use_audio_prompt", action="store_true", help="If set, the model will use an audio file as a prompt during generation. The audio file should be specified using --audio_prompt_path.")
+parser.add_argument("--audio_prompt_path", type=str, default="", help="The file path to an audio file to use as a reference prompt when --use_audio_prompt is enabled.")
+parser.add_argument("--prompt_start_time", type=float, default=0.0, help="The start time in seconds to extract the audio prompt from the given audio file.")
+parser.add_argument("--prompt_end_time", type=float, default=30.0, help="The end time in seconds to extract the audio prompt from the given audio file.")
+# Output 
+parser.add_argument("--output_dir", type=str, default="./output", help="The directory where generated outputs will be saved.")
+parser.add_argument("--keep_intermediate", action="store_true", help="If set, intermediate outputs will be saved during processing.")
+parser.add_argument("--disable_offload_model", action="store_true", help="If set, the model will not be offloaded from the GPU to CPU after Stage 1 inference.")
 parser.add_argument("--cuda_idx", type=int, default=0)
-parser.add_argument("--genre_txt", type=str, required=True)
-parser.add_argument("--lyrics_txt", type=str, required=True)
-parser.add_argument("--use_audio_prompt", action="store_true")
-parser.add_argument("--audio_prompt_path", type=str, default="")
-parser.add_argument("--prompt_start_time", type=float, default=0.0)
-parser.add_argument("--prompt_end_time", type=float, default=30.0)
-parser.add_argument('--basic_model_config', default='./xcodec_mini_infer/final_ckpt/config.yaml', help='YAML files for configurations.')
-parser.add_argument('--resume_path', default='./xcodec_mini_infer/final_ckpt/ckpt_00360000.pth', help='Path to the model checkpoint.')
+# Config for xcodec and upsampler
+parser.add_argument('--basic_model_config', default='./xcodec_mini_infer/final_ckpt/config.yaml', help='YAML files for xcodec configurations.')
+parser.add_argument('--resume_path', default='./xcodec_mini_infer/final_ckpt/ckpt_00360000.pth', help='Path to the xcodec checkpoint.')
 parser.add_argument('--config_path', type=str, default='./xcodec_mini_infer/decoders/config.yaml', help='Path to Vocos config file.')
 parser.add_argument('--vocal_decoder_path', type=str, default='./xcodec_mini_infer/decoders/decoder_131000.pth', help='Path to Vocos decoder weights.')
 parser.add_argument('--inst_decoder_path', type=str, default='./xcodec_mini_infer/decoders/decoder_151000.pth', help='Path to Vocos decoder weights.')
 parser.add_argument('-r', '--rescale', action='store_true', help='Rescale output to avoid clipping.')
-parser.add_argument("--keep_intermediate", action="store_true")
 
 
 args = parser.parse_args()
@@ -103,6 +106,13 @@ def load_audio_mono(filepath, sampling_rate=16000):
         audio = resampler(audio)
     return audio
 
+def split_lyrics(lyrics):
+    pattern = r"\[(\w+)\](.*?)\n(?=\[|\Z)"
+    segments = re.findall(pattern, lyrics, re.DOTALL)
+    structured_lyrics = [f"[{seg[0]}]\n{seg[1].strip()}\n\n" for seg in segments]
+    return structured_lyrics
+
+# Call the function and print the result
 stage1_output_set = []
 # Tips:
 # genre tags support instrumental，genre，mood，vocal timbr and vocal gender
@@ -110,7 +120,7 @@ stage1_output_set = []
 with open(args.genre_txt) as f:
     genres = f.read().strip()
 with open(args.lyrics_txt) as f:
-    lyrics = ast.literal_eval(f.read())  # Safely evaluate the string to a list
+    lyrics = split_lyrics(f.read())
 # intruction
 full_lyrics = "\n".join(lyrics)
 prompt_texts = [f"Generate music from the given lyrics segment by segment.\n[Genre] {genres}\n{full_lyrics}"]
@@ -203,8 +213,8 @@ for i in range(range_begin, len(soa_idx)):
     instrumentals.append(instrumentals_ids)
 vocals = np.concatenate(vocals, axis=1)
 instrumentals = np.concatenate(instrumentals, axis=1)
-vocal_save_path = os.path.join(stage1_output_dir, f'cot_{genres}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_vocal_{random_id}'.replace('.', '@')+'.npy')
-inst_save_path = os.path.join(stage1_output_dir, f'cot_{genres}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_instrumental_{random_id}'.replace('.', '@')+'.npy')
+vocal_save_path = os.path.join(stage1_output_dir, f"cot_{genres.replace(' ', '-')}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_vocal_{random_id}".replace('.', '@')+'.npy')
+inst_save_path = os.path.join(stage1_output_dir, f"cot_{genres.replace(' ', '-')}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_instrumental_{random_id}".replace('.', '@')+'.npy')
 np.save(vocal_save_path, vocals)
 np.save(inst_save_path, instrumentals)
 stage1_output_set.append(vocal_save_path)

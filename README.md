@@ -3,9 +3,11 @@
 </p>
 
 <p align="center">
-    <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot">YuE-s1-7B-anneal-en-cot 🤗</a> &nbsp;|&nbsp; <a href="https://m-a-p-ai.feishu.cn/wiki/OhpXwDcOsih6dakLcskcX7vEnXc">Demo 🎶</a> 
+    <a href="https://map-yue.github.io/">Demo 🎶</a> &nbsp;|&nbsp; 📑 <a href="">Paper (coming soon)</a>
     <br>
-    📑 <a href="">Paper</a>&nbsp;&nbsp;|&nbsp;&nbsp;📑 <a href="">Blog</a>
+    <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot">YuE-s1-7B-anneal-en-cot 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-icl">YuE-s1-7B-anneal-en-icl 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-jp-kr-cot">YuE-s1-7B-anneal-jp-kr-cot 🤗</a> &nbsp;
+    <br>
+    &nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-jp-kr-icl">YuE-s1-7B-anneal-jp-kr-icl 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-zh-cot">YuE-s1-7B-anneal-zh-cot 🤗</a> &nbsp;|&nbsp; <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-zh-icl">YuE-s1-7B-anneal-zh-icl 🤗</a>
 </p>
 
 ---
@@ -44,12 +46,11 @@ pip install flash-attn --no-build-isolation
 Before installing FlashAttention, ensure that your CUDA environment is correctly set up. 
 For example, if you are using CUDA 11.8:
 - If using a module system:
-```module load cuda11.8/toolkit/11.8.0 ```
+``` module load cuda11.8/toolkit/11.8.0 ```
 - Or manually configure CUDA in your shell:
 ```
     export PATH=/usr/local/cuda-11.8/bin:$PATH
     export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
-    source ~/.bashrc
 ```
 
 ---
@@ -70,11 +71,9 @@ To customize the number of sessions, the interface allows you to specify the des
 ```
 # Make sure you have git-lfs installed (https://git-lfs.com)
 git lfs install
-
 git clone https://github.com/multimodal-art-projection/YuE.git
 
 cd YuE/inference/
-git lfs install
 git clone https://huggingface.co/m-a-p/xcodec_mini_infer
 ```
 
@@ -84,26 +83,32 @@ Here’s a quick guide to help you generate music with **YuE** using 🤗 Transf
 
 In the following example, customize the `genres` and `lyrics` in the script, then execute it to generate a song with **YuE**.
 
-```python
-cd inference/
+Notice: Set `--run_n_segments` to the number of lyric sections if you want to generate a full song. Additionally, you can increase `--stage2_batch_size` based on your available GPU memory.
+
+```bash
+cd YuE/inference/
 python infer.py \
     --stage1_model m-a-p/YuE-s1-7B-anneal-en-cot \
     --stage2_model m-a-p/YuE-s2-1B-general \
     --genre_txt prompt_examples/genre.txt \
-    --lyrics_txt prompt_examples/lyrics.txt \
+    --lyrics_txt prompt_examples/lyrics.txt \ 
+    --run_n_segments 2 \
+    --stage2_batch_size 4 \
     --output_dir ./output \
     --cuda_idx 0 \
     --max_new_tokens 3000 
 ```
 
 If you want to use audio prompt, enable `--use_audio_prompt`, and provide audio prompt:
-```python
-cd inference/
+```bash
+cd YuE/inference/
 python infer.py \
-    --stage1_model m-a-p/YuE-s1-7B-anneal-en-cot \
+    --stage1_model m-a-p/YuE-s1-7B-anneal-en-icl \
     --stage2_model m-a-p/YuE-s2-1B-general \
     --genre_txt prompt_examples/genre.txt \
     --lyrics_txt prompt_examples/lyrics.txt \
+    --run_n_segments 2 \
+    --stage2_batch_size 4 \
     --output_dir ./output \
     --cuda_idx 0 \
     --max_new_tokens 3000 \
@@ -117,7 +122,7 @@ python infer.py \
 
 ### **Execution Time**
 On an **H800 GPU**, one session takes **70–100 seconds**.  
-On an **RTX 4090 GPU**, one session takes approximately 180 seconds** (replace with exact value).  
+On an **RTX 4090 GPU**, one session takes approximately **180 seconds**.  
 
 **Tips:**
 1. `genres` should include details like instruments, genre, mood, vocal timbre, and vocal gender.
@@ -136,7 +141,7 @@ On an **RTX 4090 GPU**, one session takes approximately 180 seconds** (replace w
 
 ## License Agreement
 
-
+Creative Commons Attribution Non Commercial 4.0
 
 ---
 
@@ -145,6 +150,12 @@ On an **RTX 4090 GPU**, one session takes approximately 180 seconds** (replace w
 If you find our paper and code useful in your research, please consider giving a star :star: and citation :pencil: :)
 
 ```BibTeX
-
+@misc{yuan2025yue,
+  title={YuE: Open Music Foundation Models for Full-Song Generation},
+  author={Ruibin Yuan and Hanfeng Lin and Shawn Guo and Ge Zhang and Jiahao Pan and Yongyi Zang and Haohe Liu and Xingjian Du and Xeron Du and Zhen Ye and Tianyu Zheng and Yinghao Ma and Minghao Liu and Lijun Yu and Zeyue Tian and Ziya Zhou and Liumeng Xue and Xingwei Qu and Yizhi Li and Tianhao Shen and Ziyang Ma and Shangda Wu and Jun Zhan and Chunhui Wang and Yatian Wang and Xiaohuan Zhou and Xiaowei Chi and Xinyue Zhang and Zhenzhu Yang and Yiming Liang and Xiangzhou Wang and Shansong Liu and Lingrui Mei and Peng Li and Yong Chen and Chenghua Lin and Xie Chen and Gus Xia and Zhaoxiang Zhang and Chao Zhang and Wenhu Chen and Xinyu Zhou and Xipeng Qiu and Roger Dannenberg and Jiaheng Liu and Jian Yang and Stephen Huang and Wei Xue and Xu Tan and Yike Guo}, 
+  howpublished={\url{https://github.com/multimodal-art-projection/YuE}},
+  year={2025},
+  note={GitHub repository}
+}
 ```
 <br>
