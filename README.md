@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-    <strong>YuE-s1-7B-anneal-en-cot</strong> <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot">🤗</a>  &nbsp;|&nbsp; Demo <a href="https://m-a-p-ai.feishu.cn/wiki/OhpXwDcOsih6dakLcskcX7vEnXc">🎶</a> 
+    <a href="https://huggingface.co/m-a-p/YuE-s1-7B-anneal-en-cot">YuE-s1-7B-anneal-en-cot 🤗</a> &nbsp;|&nbsp; <a href="https://m-a-p-ai.feishu.cn/wiki/OhpXwDcOsih6dakLcskcX7vEnXc">Demo 🎶</a> 
     <br>
     📑 <a href="">Paper</a>&nbsp;&nbsp;|&nbsp;&nbsp;📑 <a href="">Blog</a>
 </p>
@@ -20,9 +20,16 @@
 
 ## Requirements
 
+Python >=3.8 is recommended.
+
 Install dependencies with the following command:
 
-`pip install requirements.txt`
+```
+pip install -r requirements.txt
+
+# For saving GPU memory flashattn is needed
+pip install flash-attn --no-build-isolation
+```
 
 
 ## Quickstart
@@ -45,10 +52,15 @@ cd inference/
 python infer.py \
     --stage1_model m-a-p/YuE-s1-7B-anneal-en-cot \
     --stage2_model m-a-p/YuE-s2-1B-general \
+    --genre_txt prompt_examples/genre.txt
+    --lyrics_txt prompt_examples/lyrics.txt
     --output_dir ./output \
     --cuda_idx 0 \
-    --max_new_tokens 3000
+    --max_new_tokens 3000 
 ```
+
+If you want to use audio prompt, enable `--use_audio_prompt`, and 
+
 **Tips:**
 1. `genres` should include details like instruments, genre, mood, vocal timbre, and vocal gender.
 2. The length of `lyrics` segments and the `--max_new_tokens` value should be matched. For example, if `--max_new_tokens` is set to 3000, the maximum duration for a segment is around 30 seconds. Ensure your lyrics fit this time frame.
