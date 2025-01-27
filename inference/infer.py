@@ -279,7 +279,7 @@ def stage2_generate(model, prompt, batch_size=16):
 
     return output
 
-def stage2_inference(model, stage1_output_set, stage2_output_dir, batch_size=16):
+def stage2_inference(model, stage1_output_set, stage2_output_dir, batch_size=4):
     stage2_result = []
     for i in tqdm(range(len(stage1_output_set))):
         output_filename = os.path.join(stage2_output_dir, os.path.basename(stage1_output_set[i]))
@@ -307,6 +307,7 @@ def stage2_inference(model, stage1_output_set, stage2_output_dir, batch_size=16)
                 start_idx = seg * batch_size * 300
                 # Ensure the end_idx does not exceed the available length
                 end_idx = min((seg + 1) * batch_size * 300, output_duration*50)  # Adjust the last segment
+                batch_size = batch_size if seg != num_segments-1 else num_batch % batch_size
                 segment = stage2_generate(
                     model,
                     prompt[:, start_idx:end_idx],
@@ -337,7 +338,7 @@ def stage2_inference(model, stage1_output_set, stage2_output_dir, batch_size=16)
         stage2_result.append(output_filename)
     return stage2_result
 
-stage2_result = stage2_inference(model_stage2, stage1_output_set, stage2_output_dir, batch_size=16)
+stage2_result = stage2_inference(model_stage2, stage1_output_set, stage2_output_dir, batch_size=4)
 print('Stage 2 DONE.\n')
 
 # convert audio tokens to audio
