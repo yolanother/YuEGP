@@ -56,23 +56,20 @@ mmtokenizer = _MMSentencePieceTokenizer("./mm_tokenizer_v0.2_hf/tokenizer.model"
 model = AutoModelForCausalLM.from_pretrained(
     stage1_model, 
     torch_dtype=torch.bfloat16,
-    # attn_implementation="flash_attention_2", # To enable flashattn, you have to install flash-attn
+    attn_implementation="flash_attention_2", # To enable flashattn, you have to install flash-attn
     )
-model_stage2 = AutoModelForCausalLM.from_pretrained(
-    stage2_model, 
-    torch_dtype=torch.float16,
-    # attn_implementation="flash_attention_2"
-    )
-
 # to device, if gpu is available
 model.to(device)
 model.eval()
-model_stage2.to(device)
-model_stage2.eval()
 
 codectool = CodecManipulator("xcodec", 0, 1)
 codectool_stage2 = CodecManipulator("xcodec", 0, 8)
-
+model_config = OmegaConf.load(args.basic_model_config)
+codec_model = eval(model_config.generator.name)(**model_config.generator.config).to(device)
+parameter_dict = torch.load(args.resume_path, map_location='cpu')
+codec_model.load_state_dict(parameter_dict['codec_model'])
+codec_model.to(device)
+codec_model.eval()
 
 class BlockTokenRangeProcessor(LogitsProcessor):
     def __init__(self, start_id, end_id):
@@ -124,12 +121,6 @@ for i, p in enumerate(tqdm(prompt_texts)):
         continue
     if i==1:
         if args.use_audio_prompt:
-            model_config = OmegaConf.load(args.basic_model_config)
-            codec_model = eval(model_config.generator.name)(**model_config.generator.config).to(device)
-            parameter_dict = torch.load(args.resume_path, map_location='cpu')
-            codec_model.load_state_dict(parameter_dict['codec_model'])
-            codec_model.to(device)
-            codec_model.eval()
             audio_prompt = load_audio_mono(args.audio_prompt_path)
             audio_prompt.unsqueeze_(0)
             with torch.no_grad():
@@ -206,7 +197,19 @@ stage1_output_set.append(vocal_save_path)
 stage1_output_set.append(inst_save_path)
 
 
+# offload model
+model.cpu()
+del model
+torch.cuda.empty_cache()
+
 print("Stage 2 inference...")
+model_stage2 = AutoModelForCausalLM.from_pretrained(
+    stage2_model, 
+    torch_dtype=torch.float16,
+    attn_implementation="flash_attention_2"
+    )
+model_stage2.to(device)
+model_stage2.eval()
 
 def stage2_generate(model, prompt, batch_size=16):
     codec_ids = codectool.unflatten(prompt, n_quantizer=1)
