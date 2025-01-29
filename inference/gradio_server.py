@@ -128,7 +128,7 @@ codec_model.load_state_dict(parameter_dict['codec_model'])
 codec_model.to(device)
 codec_model.eval()
 
-offload.profile(pipe, profile_no = profile, compile = compile, quantizeTransformer= quantizeTransformer, verboseLevel= args.verbose ) 
+offload.profile(pipe, profile_no = profile, pinnedMemory=False, compile = compile, quantizeTransformer= quantizeTransformer, verboseLevel= args.verbose ) 
 
 class BlockTokenRangeProcessor(LogitsProcessor):
     def __init__(self, start_id, end_id):
@@ -155,7 +155,7 @@ def split_lyrics(lyrics):
     return structured_lyrics
 
 
-def generate_song(genres_input, lyrics_input, run_n_segments, progress=gr.Progress()):
+def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_tokens, progress=gr.Progress()):
     # Call the function and print the result
 
     # return "output/cot_inspiring-female-uplifting-pop-airy-vocal-electronic-bright-vocal-vocal_tp0@93_T1@0_rp1@2_maxtk3000_mixed_e0a99c45-7f63-41c9-826f-9bde7417db4c.mp3"
@@ -169,6 +169,14 @@ def generate_song(genres_input, lyrics_input, run_n_segments, progress=gr.Progre
     full_lyrics = "\n".join(lyrics)
     prompt_texts = [f"Generate music from the given lyrics segment by segment.\n[Genre] {genres}\n{full_lyrics}"]
     prompt_texts += lyrics
+
+    import random
+
+    if seed <= 0:
+        seed = random.randint(0, 999999999)
+
+    torch.cuda.manual_seed(seed)
+    random.seed(seed)
 
 
     random_id = uuid.uuid4()
@@ -504,14 +512,15 @@ def create_demo():
                 genres_input = gr.Text(label="Genres", value="inspiring female uplifting pop airy vocal electronic bright vocal") 
                 lyrics_input = gr.Text(label="Lyrics", lines = 20, value=lyrics_file ) 
 
-                number_sequences = gr.Slider(1, 10, value=2, step=1, label="Number of Sequences (paragraphs in Lyrics, the higher this number, the higher the VRAM consumption)")
-
-                # num_inference_steps = gr.Slider(1, 100, value=50, step=1, label="Number of Inference Steps")
     
 
             
             with gr.Column():
                 # gen_status = gr.Text(label="Status", interactive= False) 
+                number_sequences = gr.Slider(1, 10, value=2, step=1, label="Number of Sequences (paragraphs in Lyrics, the higher this number, the higher the VRAM consumption)")
+                max_new_tokens = gr.Slider(100, 5000, value=3000, step=1, label="Max new tokens to process in a row (trade off quality / VRAM consumption ?)")
+
+                seed = gr.Slider(0, 999999999 , value=42, step=1, label="Seed (0 for random)")
                 output = gr.Audio(
                         label="Generated Song")
                 state = gr.State({})
@@ -526,6 +535,8 @@ def create_demo():
                 genres_input,
                 lyrics_input,
                 number_sequences,
+                seed,
+                max_new_tokens,
                 # state
             ],
             outputs= [output] #,state 
