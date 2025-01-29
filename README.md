@@ -127,9 +127,9 @@ To customize the number of sessions, the interface allows you to specify the des
 ```
 # Make sure you have git-lfs installed (https://git-lfs.com)
 git lfs install
-git clone https://github.com/multimodal-art-projection/YuE.git
+git clone https://github.com/deepbeepmeep/YuEGP/
 
-cd YuE/inference/
+cd YuEGP/inference/
 git clone https://huggingface.co/m-a-p/xcodec_mini_infer
 ```
 
