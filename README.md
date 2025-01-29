@@ -24,8 +24,48 @@ Pop:Quiet Evening
 Metal: Step Back
 <audio controls src="https://cdn-uploads.huggingface.co/production/uploads/6555e8d8a0c34cd61a6b9ce3/kmCwl4GRS70UYDEELL-Tn.mpga"></audio>
 
-## News and Updates
+## YuE GP for the GPU Poor by DeepBeepMeep
 
+Please first follow the instructions to install the app below.
+
+To run the Gradio app with a profile 3 (default profile, the fastest but requires 16 GB of VRAM):
+```bash
+cd inference
+python gradio_app --profile 1
+```
+
+To run the Gradio app with a profile 3 (default profile, a bit slower and the model is quantized to 8 bits but requires 12 GB of VRAM):
+```bash
+cd inference
+python gradio_app --profile 3
+```
+
+To run the Gradio app with less than 10 GB of VRAM  profile 4 (very slow as this will incur sequencial offloading):
+```bash
+cd inference
+python gradio_app --profile 4
+```
+
+You may check the mmgp git homepage  (https://github.com/deepbeepmeep/mmgp)  if you want to design your own profiles.
+
+If you enjoy this application, you will certainly appreciate  these ones:\
+- Hunyuan3D-2GP: https://github.com/deepbeepmeep/Hunyuan3D-2GP\
+A great image to 3D or text to 3D tool by the Tencent team. Thanks to mmgp it can run with less than 6 GB of VRAM
+
+- HuanyuanVideoGP: https://github.com/deepbeepmeep/HunyuanVideoGP\
+One of the best open source Text to Video generator
+
+- FluxFillGP: https://github.com/deepbeepmeep/FluxFillGP\
+One of the best inpainting / outpainting tools based on Flux that can run with less than 12 GB of VRAM.
+
+- Cosmos1GP: https://github.com/deepbeepmeep/Cosmos1GP\
+This application include two models: a text to world generator and a image / video to world (probably the best open source image to video generator).
+
+- Cosmos1GP: https://github.com/deepbeepmeep/OminiControl1GP\
+A flux derived image generator that will allow you transfer an object of your in prompted scene Optimized to run with ony 6 GB of VRAM.
+
+## News and Updates
+* **2025.01.29 🔥**: DeepBeepMeep: GPU Poor version.
 * **2025.01.26 🔥**: We have released the **YuE** series.
 
 <br>
