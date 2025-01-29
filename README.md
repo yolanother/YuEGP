@@ -53,7 +53,7 @@ python gradio_app --profile 4 --compile
 ```
 To install Triton on Windows: https://github.com/woct0rdho/triton-windows/releases/download/v3.1.0-windows.post8/triton-3.1.0-cp310-cp310-win_amd64.whl
 
-Likewise if you were not able to install flash attention on Windows, if you can force the application to use sdpa attention instead by using the '--sdpa' switch. Be aware that this may requires more VRAM
+Likewise if you were not able to install flash attention on Windows, you can force the application to use sdpa attention instead by using the '--sdpa' switch. Be aware that this may requires more VRAM
 ```bash
 cd inference
 python gradio_app --profile 4 --sdpa
@@ -62,7 +62,7 @@ python gradio_app --profile 4 --sdpa
 
 You may check the mmgp git homepage  (https://github.com/deepbeepmeep/mmgp)  if you want to design your own profiles.
 
-If you enjoy this application, you will certainly appreciate  these ones:
+If you enjoy this application, you will certainly appreciate these ones too:
 - Hunyuan3D-2GP: https://github.com/deepbeepmeep/Hunyuan3D-2GP\
 A great image to 3D or text to 3D tool by the Tencent team. Thanks to mmgp it can run with less than 6 GB of VRAM
 
@@ -75,8 +75,8 @@ One of the best inpainting / outpainting tools based on Flux that can run with l
 - Cosmos1GP: https://github.com/deepbeepmeep/Cosmos1GP\
 This application include two models: a text to world generator and a image / video to world (probably the best open source image to video generator).
 
-- Cosmos1GP: https://github.com/deepbeepmeep/OminiControl1GP\
-A flux derived image generator that will allow you transfer an object of your in prompted scene Optimized to run with ony 6 GB of VRAM.
+- OminiControlGP: https://github.com/deepbeepmeep/OminiControl1GP\
+A flux derived image generator that will allow you to transfer an object of your choosing in a prompted scene. It is optimized to run with ony 6 GB of VRAM.
 
 ## News and Updates
 * **2025.01.29 🔥**: DeepBeepMeep: GPU Poor version.
