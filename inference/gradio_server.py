@@ -128,7 +128,7 @@ codec_model.load_state_dict(parameter_dict['codec_model'])
 codec_model.to(device)
 codec_model.eval()
 
-offload.profile(pipe, profile_no = profile, pinnedMemory=False, compile = compile, quantizeTransformer= quantizeTransformer, verboseLevel= args.verbose ) 
+offload.profile(pipe, profile_no = profile,  compile = compile, quantizeTransformer= quantizeTransformer, verboseLevel= args.verbose ) #pinnedMemory=False,
 
 class BlockTokenRangeProcessor(LogitsProcessor):
     def __init__(self, start_id, end_id):
