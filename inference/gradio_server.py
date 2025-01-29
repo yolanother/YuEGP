@@ -56,12 +56,16 @@ parser.add_argument('--inst_decoder_path', type=str, default='./xcodec_mini_infe
 parser.add_argument('-r', '--rescale', action='store_true', help='Rescale output to avoid clipping.')
 parser.add_argument("--profile", type=int, default=3)
 parser.add_argument("--verbose", type=int, default=1)
+parser.add_argument("--compile", action="store_true")
+parser.add_argument("--sdpa", action="store_true")
 
 
 
 args = parser.parse_args()
 
 profile = args.profile
+compile = args.compile
+sdpa = args.sdpa
 
 args.stage1_model="m-a-p/YuE-s1-7B-anneal-en-cot"
 args.stage2_model="m-a-p/YuE-s2-1B-general"
@@ -72,6 +76,11 @@ args.stage2_batch_size=12 if profile == 1 else 4
 args.output_dir= "./output"
 args.cuda_idx =  0
 args.max_new_tokens = 3000 
+
+if sdpa:
+    attn_implementation="sdpa"
+else:
+    attn_implementation="flash_attention_2"
 
 
 
@@ -92,7 +101,7 @@ mmtokenizer = _MMSentencePieceTokenizer("./mm_tokenizer_v0.2_hf/tokenizer.model"
 model = AutoModelForCausalLM.from_pretrained(
     stage1_model, 
     torch_dtype=torch.bfloat16,
-    attn_implementation="flash_attention_2", # To enable flashattn, you have to install flash-attn
+    attn_implementation=attn_implementation, # To enable flashattn, you have to install flash-attn
     )
 # to device, if gpu is available
 model.to("cpu")
@@ -101,7 +110,7 @@ model.eval()
 model_stage2 = AutoModelForCausalLM.from_pretrained(
     stage2_model, 
     torch_dtype=torch.float16,
-    attn_implementation="flash_attention_2"
+    attn_implementation=attn_implementation,
     )
 model_stage2.to("cpu")
 model_stage2.eval()
@@ -119,7 +128,7 @@ codec_model.load_state_dict(parameter_dict['codec_model'])
 codec_model.to(device)
 codec_model.eval()
 
-offload.profile(pipe, profile_no = profile, quantizeTransformer= quantizeTransformer, verboseLevel= args.verbose ) 
+offload.profile(pipe, profile_no = profile, compile = compile, quantizeTransformer= quantizeTransformer, verboseLevel= args.verbose ) 
 
 class BlockTokenRangeProcessor(LogitsProcessor):
     def __init__(self, start_id, end_id):

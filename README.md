@@ -46,9 +46,23 @@ cd inference
 python gradio_app --profile 4
 ```
 
+If you have a Linux based system / Windows WSL or  were able to install Triton on Windows, you can also turn on Pytorch compilation with '--compile' for a faster generation.  
+```bash
+cd inference
+python gradio_app --profile 4 --compile
+```
+To install Triton on Windows: https://github.com/woct0rdho/triton-windows/releases/download/v3.1.0-windows.post8/triton-3.1.0-cp310-cp310-win_amd64.whl
+
+Likewise if you were not able to install flash attention on Windows, if you can force the application to use sdpa attention instead by using the '--sdpa' switch. Be aware that this may requires more VRAM
+```bash
+cd inference
+python gradio_app --profile 4 --sdpa
+```
+
+
 You may check the mmgp git homepage  (https://github.com/deepbeepmeep/mmgp)  if you want to design your own profiles.
 
-If you enjoy this application, you will certainly appreciate  these ones:\
+If you enjoy this application, you will certainly appreciate  these ones:
 - Hunyuan3D-2GP: https://github.com/deepbeepmeep/Hunyuan3D-2GP\
 A great image to 3D or text to 3D tool by the Tencent team. Thanks to mmgp it can run with less than 6 GB of VRAM
 
