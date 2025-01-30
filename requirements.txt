@@ -3,12 +3,12 @@ omegaconf
 torchaudio
 einops
 numpy
-transformers
+transformers==4.48.1
 sentencepiece
 tqdm
 tensorboard
 descript-audiotools>=0.7.2
 descript-audio-codec
 scipy==1.10.1
-mmgp==3.1.4-post1
+mmgp==3.1.4-post15
 gradio

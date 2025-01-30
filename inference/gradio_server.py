@@ -127,8 +127,13 @@ parameter_dict = torch.load(args.resume_path, map_location='cpu')
 codec_model.load_state_dict(parameter_dict['codec_model'])
 codec_model.to(device)
 codec_model.eval()
+kwargs  = {}
+if profile == 4 :
+    kwargs["budgets"] =  { "transformer": 3000, "*" : 5000 }
+elif profile == 2:
+    kwargs["budgets"] =  5000
 
-offload.profile(pipe, profile_no = profile,  compile = compile, quantizeTransformer= quantizeTransformer, verboseLevel= args.verbose ) #pinnedMemory=False,
+offload.profile(pipe, profile_no = profile,  compile = compile, quantizeTransformer= quantizeTransformer,  verboseLevel= args.verbose, **kwargs ) #pinnedMemory=False,
 
 class BlockTokenRangeProcessor(LogitsProcessor):
     def __init__(self, start_id, end_id):

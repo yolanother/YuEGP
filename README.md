@@ -79,6 +79,7 @@ This application include two models: a text to world generator and a image / vid
 A flux derived image generator that will allow you to transfer an object of your choosing in a prompted scene. It is optimized to run with ony 6 GB of VRAM.
 
 ## News and Updates
+* **2025.01.30 🔥**: DeepBeepMeep: Speed improvements for low VRAM profiles + patch for transformers library.
 * **2025.01.29 🔥**: DeepBeepMeep: GPU Poor version.
 * **2025.01.26 🔥**: We have released the **YuE** series.
 
@@ -131,6 +132,18 @@ git clone https://github.com/deepbeepmeep/YuEGP/
 
 cd YuEGP/inference/
 git clone https://huggingface.co/m-a-p/xcodec_mini_infer
+```
+
+If you have no choice but to use a low VRAM profile (profile 3 or 5), I am providing a patch for the transformers libray that should double the speed of the transformers libary (note this patch offers little little improvements on other profiles), this patch overwrites two files from the transformers libary. You can either copy and paste my 'transformers' folder in your venv or run the script below if the venv directory is just below the app directory:
+
+For Linux:
+```
+source patchtransformers.sh
+```
+
+For Windows:
+```
+patchtransformers.bat
 ```
 
 Here’s a quick guide to help you generate music with **YuE** using 🤗 Transformers. Before running the code, make sure your environment is properly set up, and that all dependencies are installed.
