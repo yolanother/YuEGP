@@ -2003,7 +2003,8 @@ class GenerationMixin:
                     - [`~generation.GenerateBeamEncoderDecoderOutput`]
         """
 
-        self._guidance_scale = kwargs["guidance_scale"]
+        if "guidance_scale" in kwargs:
+            self._guidance_scale = kwargs.get("guidance_scale",1)
         # 1. Handle `generation_config` and kwargs that might update it, and validate the `.generate()` call
         self._validate_model_class()
         tokenizer = kwargs.pop("tokenizer", None)  # Pull this out first, we only use it for stopping criteria
@@ -3245,7 +3246,8 @@ class GenerationMixin:
         unconditional_cache_position = 0
         unconditional_past_key_values = None
 
-        unconditional_guidance = self._guidance_scale  # 1.5
+        unconditional_guidance = getattr(self,"_guidance_scale", 0 )
+
         # unconditional_guidance = 0
         if unconditional_guidance > 0:
             unconditional_past_key_values = DynamicCache()
