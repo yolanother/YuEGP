@@ -87,7 +87,13 @@ A flux derived image generator that will allow you to transfer an object of your
 
 ## Requirements
 
-Python >=3.8 is recommended.
+
+Python >=3.10 is recommended.
+
+Install torch 2.5.1 with Cuda 12.4
+```
+pip install torch==2.5.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/test/cu124
+```
 
 Install dependencies with the following command:
 
@@ -111,6 +117,8 @@ For example, if you are using CUDA 11.8:
 ```
 
 ---
+
+As an alternative if you were unable to install Flash attention (usually a pain on Windows) you can use sdpa attention instead by adding the *--sdpa* switch when running the gradio server. However this may consume more VRAM.
 
 ## GPU Memory Usage and Sessions
 
