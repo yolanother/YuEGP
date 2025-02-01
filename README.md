@@ -85,12 +85,24 @@ A flux derived image generator that will allow you to transfer an object of your
 
 <br>
 
-## Requirements
+# Installation instructions
 
 
 Python >=3.10 is recommended.
 
-Install torch 2.5.1 with Cuda 12.4
+##  1) Install source code
+Make sure you have git-lfs installed (https://git-lfs.com)
+
+```
+git lfs install
+git clone https://github.com/deepbeepmeep/YuEGP/
+
+cd YuEGP/inference/
+git clone https://huggingface.co/m-a-p/xcodec_mini_infer
+```
+
+## 2) Install torch and requirements
+Create a Venv or use Conda and Install torch 2.5.1 with Cuda 12.4 :
 ```
 pip install torch==2.5.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/test/cu124
 ```
@@ -101,48 +113,29 @@ Install dependencies with the following command:
 pip install -r requirements.txt
 ```
 
-### **Important: Install FlashAttention 2**
-For saving GPU memory, **FlashAttention 2 is mandatory**. Without it, large sequence lengths will lead to out-of-memory (OOM) errors, especially on GPUs with limited memory. Install it using the following command:
+## 3) (optional) Install FlashAttention
+For saving GPU memory, **FlashAttention 2 is recommended**. Without it, large sequence lengths will lead to out-of-memory (OOM) errors, especially on GPUs with limited memory. Install it using the following command:
 ```
 pip install flash-attn --no-build-isolation
 ```
+
 Before installing FlashAttention, ensure that your CUDA environment is correctly set up. 
-For example, if you are using CUDA 11.8:
+For example, if you are using CUDA 12.4:
 - If using a module system:
-``` module load cuda11.8/toolkit/11.8.0 ```
+``` module load cuda12.4/toolkit/12.4.0 ```
 - Or manually configure CUDA in your shell:
-```
-    export PATH=/usr/local/cuda-11.8/bin:$PATH
-    export LD_LIBRARY_PATH=/usr/local/cuda-11.8/lib64:$LD_LIBRARY_PATH
-```
-
----
-
-As an alternative if you were unable to install Flash attention (usually a pain on Windows) you can use sdpa attention instead by adding the *--sdpa* switch when running the gradio server. However this may consume more VRAM.
-
-## GPU Memory Usage and Sessions
-
-YuE requires significant GPU memory for generating long sequences. Below are the recommended configurations:
-
-- **For GPUs with 24GB memory or less**: Run **up to 2 sessions** concurrently to avoid out-of-memory (OOM) errors.
-- **For full song generation** (many sessions, e.g., 4 or more): Use **GPUs with at least 80GB memory**. This can be achieved by combining multiple GPUs and enabling tensor parallelism.
-
-To customize the number of sessions, the interface allows you to specify the desired session count. By default, the model runs **2 sessions** for optimal memory usage.
-
----
-
-## Quickstart
 
 ```
-# Make sure you have git-lfs installed (https://git-lfs.com)
-git lfs install
-git clone https://github.com/deepbeepmeep/YuEGP/
-
-cd YuEGP/inference/
-git clone https://huggingface.co/m-a-p/xcodec_mini_infer
+    export PATH=/usr/local/cuda-12.4/bin:$PATH
+    export LD_LIBRARY_PATH=/usr/local/cuda-12.4/lib64:$LD_LIBRARY_PATH
 ```
 
-If you have no choice but to use a low VRAM profile (profile 3 or 5), I am providing a patch for the transformers libray that should double the speed of the transformers libary (note this patch offers little little improvements on other profiles), this patch overwrites two files from the transformers libary. You can either copy and paste my 'transformers' folder in your venv or run the script below if the venv directory is just below the app directory:
+
+**As an alternative if you were unable to install Flash attention (usually a pain on Windows) you can use sdpa attention instead by adding the *--sdpa* switch when running the gradio server. However this may consume more VRAM.**
+
+
+## 4) (optional) Transformers Patch for Low VRAM (< 10 GB of VRAM)
+If you have no choice but to use a low VRAM profile (profile 4), I am providing a patch for the transformers libray that should double the speed of the transformers libary (note this patch offers little little improvements on other profiles), this patch overwrites two files from the transformers libary. You can either copy and paste my 'transformers' folder in your venv or run the script below if the venv directory is just below the app directory:
 
 For Linux:
 ```
@@ -153,11 +146,20 @@ For Windows:
 ```
 patchtransformers.bat
 ```
+## GPU Memory Usage and Sessions
 
-Here’s a quick guide to help you generate music with **YuE** using 🤗 Transformers. Before running the code, make sure your environment is properly set up, and that all dependencies are installed.
+Without the optimizations, YuE requires significant GPU memory for generating long sequences. Below are the recommended configurations:
+
+- **For GPUs with 24GB memory or less**: Run **up to 2 sessions** concurrently to avoid out-of-memory (OOM) errors.
+- **For full song generation** (many sessions, e.g., 4 or more): Use **GPUs with at least 80GB memory**. This can be achieved by combining multiple GPUs and enabling tensor parallelism.
+
+To customize the number of sessions, the interface allows you to specify the desired session count. By default, the model runs **2 sessions** for optimal memory usage.
+
+---
+
 
 ### Running the Script
-
+Here’s a quick guide to help you generate music with **YuE** using 🤗 Transformers. Before running the code, make sure your environment is properly set up, and that all dependencies are installed.
 In the following example, customize the `genres` and `lyrics` in the script, then execute it to generate a song with **YuE**.
 
 Notice: Set `--run_n_segments` to the number of lyric sections if you want to generate a full song. Additionally, you can increase `--stage2_batch_size` based on your available GPU memory.
