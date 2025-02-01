@@ -28,13 +28,32 @@ Metal: Step Back
 
 Please first follow the instructions to install the app below.
 
-To run the Gradio app with a profile 3 (default profile, the fastest but requires 16 GB of VRAM):
+### YuE versions
+
+There are two versions of the YuE GP which each will download a different huggingspace model:
+
+- Lyrics + Genre prompts (default) : the song will be generated based on the Lyrics and a genre's description
+```bash
+cd inference
+python gradio_server.py
+```
+
+- In Context Learning (default), you can provide also audio prompts (either a mixed audio prompt or a vocal and instrumental prompt) to describe your expectations.
+```bash
+cd inference
+python gradio_server.py --icl
+```
+
+### Performance profiles
+You have access to numerous performance profiles depending on the performance of your GPU:\
+
+To run the Gradio app with profile 1 (default profile, the fastest but requires 16 GB of VRAM):
 ```bash
 cd inference
 python gradio_server.py --profile 1
 ```
 
-To run the Gradio app with a profile 3 (default profile, a bit slower and the model is quantized to 8 bits but requires 12 GB of VRAM):
+To run the Gradio app with profile 3 (default profile, a bit slower and the model is quantized to 8 bits but requires 12 GB of VRAM):
 ```bash
 cd inference
 python gradio_server.py --profile 3
@@ -59,9 +78,9 @@ cd inference
 python gradio_server.py --profile 4 --sdpa
 ```
 
-
 You may check the mmgp git homepage  (https://github.com/deepbeepmeep/mmgp)  if you want to design your own profiles.
 
+### Other applications for the GPU Poors
 If you enjoy this application, you will certainly appreciate these ones too:
 - Hunyuan3D-2GP: https://github.com/deepbeepmeep/Hunyuan3D-2GP :\
 A great image to 3D or text to 3D tool by the Tencent team. Thanks to mmgp it can run with less than 6 GB of VRAM
@@ -79,6 +98,7 @@ This application include two models: a text to world generator and a image / vid
 A flux derived image generator that will allow you to transfer an object of your choosing in a prompted scene. It is optimized to run with ony 6 GB of VRAM.
 
 ## News and Updates
+* **2025.01.30 🔥**: DeepBeepMeep: Added support for In Context Learning, now you can provide audio samples prompts to drive the song generation.
 * **2025.01.30 🔥**: DeepBeepMeep: Speed improvements for low VRAM profiles + patch for transformers library.
 * **2025.01.29 🔥**: DeepBeepMeep: GPU Poor version.
 * **2025.01.26 🔥**: We have released the **YuE** series.

@@ -3,29 +3,27 @@ import sys
 from mmgp import offload
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xcodec_mini_infer'))
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'xcodec_mini_infer', 'descriptaudiocodec'))
+import re
+import random
+import uuid
+import copy
+from tqdm import tqdm
+from collections import Counter
 import argparse
-import torch
 import numpy as np
-import json
-from omegaconf import OmegaConf
+import torch
 import torchaudio
 from torchaudio.transforms import Resample
 import soundfile as sf
-
-import uuid
-from tqdm import tqdm
 from einops import rearrange
+from transformers import AutoTokenizer, AutoModelForCausalLM, LogitsProcessor, LogitsProcessorList
+from omegaconf import OmegaConf
 from codecmanipulator import CodecManipulator
 from mmtokenizer import _MMSentencePieceTokenizer
-from transformers import AutoTokenizer, AutoModelForCausalLM, LogitsProcessor, LogitsProcessorList
-import glob
-import time
-import copy
-from collections import Counter
 from models.soundstream_hubert_new import SoundStream
 from vocoder import build_codec_model, process_audio
 from post_process_audio import replace_low_freq_with_energy_matched
-import re
+parser = argparse.ArgumentParser()
 import gradio as gr
 
 parser = argparse.ArgumentParser()
@@ -42,6 +40,9 @@ parser.add_argument("--use_audio_prompt", action="store_true", help="If set, the
 parser.add_argument("--audio_prompt_path", type=str, default="", help="The file path to an audio file to use as a reference prompt when --use_audio_prompt is enabled.")
 parser.add_argument("--prompt_start_time", type=float, default=0.0, help="The start time in seconds to extract the audio prompt from the given audio file.")
 parser.add_argument("--prompt_end_time", type=float, default=30.0, help="The end time in seconds to extract the audio prompt from the given audio file.")
+parser.add_argument("--use_dual_tracks_prompt", action="store_true", help="If set, the model will use dual tracks as a prompt during generation. The vocal and instrumental files should be specified using --vocal_track_prompt_path and --instrumental_track_prompt_path.")
+parser.add_argument("--vocal_track_prompt_path", type=str, default="", help="The file path to a vocal track file to use as a reference prompt when --use_dual_tracks_prompt is enabled.")
+parser.add_argument("--instrumental_track_prompt_path", type=str, default="", help="The file path to an instrumental track file to use as a reference prompt when --use_dual_tracks_prompt is enabled.")
 # Output 
 parser.add_argument("--output_dir", type=str, default="./output", help="The directory where generated outputs will be saved.")
 parser.add_argument("--keep_intermediate", action="store_true", help="If set, intermediate outputs will be saved during processing.")
@@ -58,7 +59,7 @@ parser.add_argument("--profile", type=int, default=3)
 parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--compile", action="store_true")
 parser.add_argument("--sdpa", action="store_true")
-
+parser.add_argument("--icl", action="store_true")
 
 
 args = parser.parse_args()
@@ -66,8 +67,14 @@ args = parser.parse_args()
 profile = args.profile
 compile = args.compile
 sdpa = args.sdpa
+use_icl = args.icl
+# use_icl = True
 
-args.stage1_model="m-a-p/YuE-s1-7B-anneal-en-cot"
+if use_icl:
+    args.stage1_model="m-a-p/YuE-s1-7B-anneal-en-icl"
+else:
+    args.stage1_model="m-a-p/YuE-s1-7B-anneal-en-cot"
+
 args.stage2_model="m-a-p/YuE-s2-1B-general"
 args.genre_txt="prompt_examples/genrerock.txt"
 args.lyrics_txt="prompt_examples/lastxmas.txt"
@@ -86,6 +93,8 @@ else:
 
 if args.use_audio_prompt and not args.audio_prompt_path:
     raise FileNotFoundError("Please offer audio prompt filepath using '--audio_prompt_path', when you enable 'use_audio_prompt'!")
+if args.use_dual_tracks_prompt and not args.vocal_track_prompt_path and not args.instrumental_track_prompt_path:
+    raise FileNotFoundError("Please offer dual tracks prompt filepath using '--vocal_track_prompt_path' and '--inst_decoder_path', when you enable '--use_dual_tracks_prompt'!")
 stage1_model = args.stage1_model
 stage2_model = args.stage2_model
 cuda_idx = args.cuda_idx
@@ -153,6 +162,15 @@ def load_audio_mono(filepath, sampling_rate=16000):
         audio = resampler(audio)
     return audio
 
+def encode_audio(codec_model, audio_prompt, device, target_bw=0.5):
+    if len(audio_prompt.shape) < 3:
+        audio_prompt.unsqueeze_(0)
+    with torch.no_grad():
+        raw_codes = codec_model.encode(audio_prompt.to(device), target_bw=target_bw)
+    raw_codes = raw_codes.transpose(0, 1)
+    raw_codes = raw_codes.cpu().numpy().astype(np.int16)
+    return raw_codes
+
 def split_lyrics(lyrics):
     pattern = r"\[(\w+)\](.*?)\n(?=\[|\Z)"
     segments = re.findall(pattern, lyrics, re.DOTALL)
@@ -160,8 +178,29 @@ def split_lyrics(lyrics):
     return structured_lyrics
 
 
-def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_tokens, progress=gr.Progress()):
+def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_tokens, vocal_track_prompt, instrumental_track_prompt, prompt_start_time, prompt_end_time, progress=gr.Progress()):
+    args.use_audio_prompt = False
+    args.use_dual_tracks_prompt = False
     # Call the function and print the result
+
+    if use_icl:
+        if prompt_start_time > prompt_end_time:
+            raise gr.Error(f"'Start time' should be less than 'End Time'")
+        if (prompt_end_time - prompt_start_time) > 30 :
+            raise gr.Error(f"The duration for the audio prompt should not exceed 30s")
+        if vocal_track_prompt == None:
+            raise gr.Error(f"You must provide at least a Vocal audio prompt")
+        args.prompt_start_time = prompt_start_time
+        args.prompt_end_time = prompt_end_time
+
+        if instrumental_track_prompt == None:
+            args.use_audio_prompt = True
+            args.audio_prompt_path = vocal_track_prompt
+        else:
+            args.use_dual_tracks_prompt = True
+            args.vocal_track_prompt_path = vocal_track_prompt
+            args.instrumental_track_prompt_path = instrumental_track_prompt
+
 
     # return "output/cot_inspiring-female-uplifting-pop-airy-vocal-electronic-bright-vocal-vocal_tp0@93_T1@0_rp1@2_maxtk3000_mixed_e0a99c45-7f63-41c9-826f-9bde7417db4c.mp3"
     stage1_output_set = []
@@ -194,23 +233,30 @@ def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_toke
     start_of_segment = mmtokenizer.tokenize('[start_of_segment]')
     end_of_segment = mmtokenizer.tokenize('[end_of_segment]')
     # Format text prompt
-    run_n_segments = min(run_n_segments+1, len(lyrics))
+    run_n_segments = min(run_n_segments, len(lyrics)) +1
     for i, p in enumerate(tqdm(prompt_texts[:run_n_segments])):
         section_text = p.replace('[start_of_segment]', '').replace('[end_of_segment]', '')
         guidance_scale = 1.5 if i <=1 else 1.2
         if i==0:
             continue
         if i==1:
-            if args.use_audio_prompt:
-                audio_prompt = load_audio_mono(args.audio_prompt_path)
-                audio_prompt.unsqueeze_(0)
-                with torch.no_grad():
-                    raw_codes = codec_model.encode(audio_prompt.to(device), target_bw=0.5)
-                raw_codes = raw_codes.transpose(0, 1)
-                raw_codes = raw_codes.cpu().numpy().astype(np.int16)
-                # Format audio prompt
-                code_ids = codectool.npy2ids(raw_codes[0])
-                audio_prompt_codec = code_ids[int(args.prompt_start_time *50): int(args.prompt_end_time *50)] # 50 is tps of xcodec
+            if args.use_dual_tracks_prompt or args.use_audio_prompt:
+                if args.use_dual_tracks_prompt:
+                    vocals_ids = load_audio_mono(args.vocal_track_prompt_path)
+                    instrumental_ids = load_audio_mono(args.instrumental_track_prompt_path)
+                    vocals_ids = encode_audio(codec_model, vocals_ids, device, target_bw=0.5)
+                    instrumental_ids = encode_audio(codec_model, instrumental_ids, device, target_bw=0.5)
+                    vocals_ids = codectool.npy2ids(vocals_ids[0])
+                    instrumental_ids = codectool.npy2ids(instrumental_ids[0])
+                    ids_segment_interleaved = rearrange([np.array(vocals_ids), np.array(instrumental_ids)], 'b n -> (n b)')
+                    audio_prompt_codec = ids_segment_interleaved[int(args.prompt_start_time*50*2): int(args.prompt_end_time*50*2)]
+                    audio_prompt_codec = audio_prompt_codec.tolist()
+                elif args.use_audio_prompt:
+                    audio_prompt = load_audio_mono(args.audio_prompt_path)
+                    raw_codes = encode_audio(codec_model, audio_prompt, device, target_bw=0.5)
+                    # Format audio prompt
+                    code_ids = codectool.npy2ids(raw_codes[0])
+                    audio_prompt_codec = code_ids[int(args.prompt_start_time *50): int(args.prompt_end_time *50)] # 50 is tps of xcodec
                 audio_prompt_codec_ids = [mmtokenizer.soa] + codectool.sep_ids + audio_prompt_codec + [mmtokenizer.eoa]
                 sentence_ids = mmtokenizer.tokenize("[start_of_reference]") +  audio_prompt_codec_ids + mmtokenizer.tokenize("[end_of_reference]")
                 head_id = mmtokenizer.tokenize(prompt_texts[0]) + sentence_ids
@@ -258,7 +304,7 @@ def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_toke
 
     vocals = []
     instrumentals = []
-    range_begin = 1 if args.use_audio_prompt else 0
+    range_begin = 1 if args.use_audio_prompt or args.use_dual_tracks_prompt else 0
     for i in range(range_begin, len(soa_idx)):
         codec_ids = ids[soa_idx[i]+1:eoa_idx[i]]
         if codec_ids[0] == 32016:
@@ -270,8 +316,8 @@ def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_toke
         instrumentals.append(instrumentals_ids)
     vocals = np.concatenate(vocals, axis=1)
     instrumentals = np.concatenate(instrumentals, axis=1)
-    vocal_save_path = os.path.join(stage1_output_dir, f"cot_{genres.replace(' ', '-')}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_vocal_{random_id}".replace('.', '@')+'.npy')
-    inst_save_path = os.path.join(stage1_output_dir, f"cot_{genres.replace(' ', '-')}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_instrumental_{random_id}".replace('.', '@')+'.npy')
+    vocal_save_path = os.path.join(stage1_output_dir, f"{genres.replace(' ', '-')}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_{random_id}_vtrack".replace('.', '@')+'.npy')
+    inst_save_path = os.path.join(stage1_output_dir, f"{genres.replace(' ', '-')}_tp{top_p}_T{temperature}_rp{repetition_penalty}_maxtk{max_new_tokens}_{random_id}_itrack".replace('.', '@')+'.npy')
     np.save(vocal_save_path, vocals)
     np.save(inst_save_path, instrumentals)
     stage1_output_set.append(vocal_save_path)
@@ -436,13 +482,13 @@ def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_toke
     for inst_path in tracks:
         try:
             if (inst_path.endswith('.wav') or inst_path.endswith('.mp3')) \
-                and 'instrumental' in inst_path:
+                and '_itrack' in inst_path:
                 # find pair
-                vocal_path = inst_path.replace('instrumental', 'vocal')
+                vocal_path = inst_path.replace('_itrack', '_vtrack')
                 if not os.path.exists(vocal_path):
                     continue
                 # mix
-                recons_mix = os.path.join(recons_mix_dir, os.path.basename(inst_path).replace('instrumental', 'mixed'))
+                recons_mix = os.path.join(recons_mix_dir, os.path.basename(inst_path).replace('_itrack', '_mixed'))
                 vocal_stem, sr = sf.read(inst_path)
                 instrumental_stem, _ = sf.read(vocal_path)
                 mix_stem = (vocal_stem + instrumental_stem) / 1
@@ -458,11 +504,11 @@ def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_toke
     os.makedirs(vocoder_mix_dir, exist_ok=True)
     os.makedirs(vocoder_stems_dir, exist_ok=True)
     for npy in stage2_result:
-        if 'instrumental' in npy:
+        if '_itrack' in npy:
             # Process instrumental
             instrumental_output = process_audio(
                 npy,
-                os.path.join(vocoder_stems_dir, 'instrumental.mp3'),
+                os.path.join(vocoder_stems_dir, 'itrack.mp3'),
                 args.rescale,
                 args,
                 inst_decoder,
@@ -472,7 +518,7 @@ def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_toke
             # Process vocal
             vocal_output = process_audio(
                 npy,
-                os.path.join(vocoder_stems_dir, 'vocal.mp3'),
+                os.path.join(vocoder_stems_dir, 'vtrack.mp3'),
                 args.rescale,
                 args,
                 vocal_decoder,
@@ -506,6 +552,10 @@ def create_demo():
         gr.Markdown("<H1><DIV ALIGN=CENTER>YuE is a groundbreaking series of open-source foundation models designed for music generation, specifically for transforming lyrics into full songs (lyrics2song).</DIV></H1>")
         gr.Markdown("<H2><B>GPU Poor version by DeepBeepMeep.</B> <A HREF='https://github.com/multimodal-art-projection/YuE'>Original Model</A></H2>")
 
+        if use_icl:
+            gr.Markdown("<H3>With In Context Learning Mode in addition to the lyrics and genres info, you can provide audio prompts to describe your expectations. You can generate a song with either: </H3>")
+            gr.Markdown("<H3>- a single mixed (song/instruments) Audio track prompt</H3>")
+            gr.Markdown("<H3>- a Vocal track and an Instrumental track prompt</H3>")
 
         with gr.Row():
             with gr.Column():
@@ -517,24 +567,30 @@ def create_demo():
                 genres_input = gr.Text(label="Genres", value="inspiring female uplifting pop airy vocal electronic bright vocal") 
                 lyrics_input = gr.Text(label="Lyrics", lines = 20, value=lyrics_file ) 
 
-    
-
-            
             with gr.Column():
                 # gen_status = gr.Text(label="Status", interactive= False) 
                 number_sequences = gr.Slider(1, 10, value=2, step=1, label="Number of Sequences (paragraphs in Lyrics, the higher this number, the higher the VRAM consumption)")
                 max_new_tokens = gr.Slider(100, 5000, value=3000, step=1, label="Max new tokens to process in a row (trade off quality / VRAM consumption ?)")
 
                 seed = gr.Slider(0, 999999999 , value=42, step=1, label="Seed (0 for random)")
-                output = gr.Audio(
-                        label="Generated Song")
+                output = gr.Audio( label="Generated Song")
                 state = gr.State({})
                 generate_btn = gr.Button("Generate")
-                # abort_btn = gr.Button("Abort")
+
+        with gr.Row(visible=use_icl) : #use_icl
+            with gr.Column():
+                vocal_track_prompt = gr.Audio( label="Audio track prompt / Vocal track prompt", type = 'filepath' )
+            with gr.Column():
+                instrumental_track_prompt = gr.Audio( label="Intrumental track prompt (optional if Vocal track prompt set)", type = 'filepath')
+        with gr.Row(visible=use_icl) : 
+            with gr.Column():
+                prompt_start_time = gr.Slider(0.0, 300.0, value=0.0, step=0.5, label="Audio Prompt Start time")
+                prompt_end_time = gr.Slider(0.0, 300.0, value=30.0, step=0.5, label="Audio Prompt End time") 
+
 
         # abort_btn.click(abort_generation,state,abort_btn )
 
-        generate_btn.click(
+        generate_btn.click( 
             fn=generate_song,
             inputs=[
                 genres_input,
@@ -542,6 +598,10 @@ def create_demo():
                 number_sequences,
                 seed,
                 max_new_tokens,
+                vocal_track_prompt,
+                instrumental_track_prompt,
+                prompt_start_time,
+                prompt_end_time,
                 # state
             ],
             outputs= [output] #,state 
