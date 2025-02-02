@@ -248,6 +248,9 @@ def generate_song(genres_input, lyrics_input, run_n_segments, seed, max_new_toke
                     instrumental_ids = encode_audio(codec_model, instrumental_ids, device, target_bw=0.5)
                     vocals_ids = codectool.npy2ids(vocals_ids[0])
                     instrumental_ids = codectool.npy2ids(instrumental_ids[0])
+                    min_size = min(len(vocals_ids), len(instrumental_ids) )
+                    vocals_ids = vocals_ids[0 : min_size]
+                    instrumental_ids = instrumental_ids[0 : min_size]
                     ids_segment_interleaved = rearrange([np.array(vocals_ids), np.array(instrumental_ids)], 'b n -> (n b)')
                     audio_prompt_codec = ids_segment_interleaved[int(args.prompt_start_time*50*2): int(args.prompt_end_time*50*2)]
                     audio_prompt_codec = audio_prompt_codec.tolist()
