@@ -58,6 +58,13 @@ parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--compile", action="store_true")
 parser.add_argument("--icl", action="store_true")
 parser.add_argument("--sdpa", default=True)
+parser.add_argument("--genre_txt", type=str, default="prompt_examples/genrerock.txt")
+parser.add_argument("--lyrics_txt", type=str, default="prompt_examples/lastxmas.txt")
+parser.add_argument("--run_n_segments", type=int, default=2)
+parser.add_argument("--stage2_batch_size", type=int, default=12)
+parser.add_argument("--output_dir", type=str, default="./output")
+parser.add_argument("--cuda_idx", type=int, default=0)
+
 
 
 args = parser.parse_args()
@@ -70,15 +77,6 @@ if use_icl:
     args.stage1_model="m-a-p/YuE-s1-7B-anneal-en-icl"
 else:
     args.stage1_model="m-a-p/YuE-s1-7B-anneal-en-cot"
-
-args.stage2_model="m-a-p/YuE-s2-1B-general"
-args.genre_txt="prompt_examples/genrerock.txt"
-args.lyrics_txt="prompt_examples/lastxmas.txt"
-args.run_n_segments=2
-args.stage2_batch_size=12 if profile==1 else 4
-args.output_dir= "./output"
-args.cuda_idx =  0
-args.max_new_tokens = 3000 
 
 if sdpa:
     attn_implementation="sdpa"
