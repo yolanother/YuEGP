@@ -57,6 +57,7 @@ parser.add_argument("--profile", type=int, default=3)
 parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--compile", action="store_true")
 parser.add_argument("--icl", action="store_true")
+parser.add_argument("--sdpa", default=True)
 
 
 args = parser.parse_args()
