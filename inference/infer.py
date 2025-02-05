@@ -58,8 +58,8 @@ parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--compile", action="store_true")
 parser.add_argument("--icl", action="store_true")
 parser.add_argument("--sdpa", default=True)
-parser.add_argument("--genre_txt", type=str, default="prompt_examples/genrerock.txt")
-parser.add_argument("--lyrics_txt", type=str, default="prompt_examples/lastxmas.txt")
+parser.add_argument("--genre_txt", type=str, default="genre.txt")
+parser.add_argument("--lyrics_txt", type=str, default="lyrics.txt")
 parser.add_argument("--run_n_segments", type=int, default=2)
 parser.add_argument("--stage2_batch_size", type=int, default=12)
 parser.add_argument("--output_dir", type=str, default="./output")
@@ -177,8 +177,11 @@ stage1_output_set = []
 # Tips:
 # genre tags support instrumental，genre，mood，vocal timbr and vocal gender
 # all kinds of tags are needed
+print(f"Opening genre file: {args.genre_txt}")
 with open(args.genre_txt) as f:
     genres = f.read().strip()
+
+print(f"Opening lyrics file: {args.lyrics_txt}")
 with open(args.lyrics_txt) as f:
     lyrics = split_lyrics(f.read())
 # intruction
