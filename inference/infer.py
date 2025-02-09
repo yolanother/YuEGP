@@ -58,7 +58,7 @@ parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--compile", action="store_true")
 parser.add_argument("--icl", action="store_true")
 parser.add_argument("--sdpa", default=True)
-
+parser.add_argument("--download_model", action="store_true", default=False)
 
 
 args = parser.parse_args()
@@ -130,6 +130,10 @@ parameter_dict = torch.load(args.resume_path, map_location='cpu')
 codec_model.load_state_dict(parameter_dict['codec_model'])
 codec_model.to(device)
 codec_model.eval()
+
+#if --download-model is set stop here.
+if args.download_model:
+    exit(0)
 
 offload.profile(pipe, profile_no = profile, quantizeTransformer= quantizeTransformer, compile = compile, verboseLevel= args.verbose ) 
     
