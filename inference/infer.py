@@ -58,10 +58,6 @@ parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--compile", action="store_true")
 parser.add_argument("--icl", action="store_true")
 parser.add_argument("--sdpa", default=True)
-parser.add_argument("--run_n_segments", type=int, default=2)
-parser.add_argument("--stage2_batch_size", type=int, default=12)
-parser.add_argument("--output_dir", type=str, default="./output")
-parser.add_argument("--cuda_idx", type=int, default=0)
 
 
 
