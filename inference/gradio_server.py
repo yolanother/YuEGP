@@ -60,9 +60,12 @@ parser.add_argument("--verbose", type=int, default=1)
 parser.add_argument("--compile", action="store_true")
 parser.add_argument("--sdpa", action="store_true")
 parser.add_argument("--icl", action="store_true")
-
+parser.add_argument("--server_name", type=str, default="0.0.0.0")
+parser.add_argument("--server_port", type=int, default=7860)
 
 args = parser.parse_args()
+server_name = args.server_name
+server_port = args.server_port
 
 profile = args.profile
 compile = args.compile
